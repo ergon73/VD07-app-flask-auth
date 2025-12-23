@@ -3,7 +3,7 @@ from flask_login import login_user, logout_user, current_user, login_required
 from datetime import datetime
 from app.models import User
 from app import app, db, bcrypt
-from app.forms import RegistrationForm, LoginForm, QuestionnaireForm
+from app.forms import RegistrationForm, LoginForm, QuestionnaireForm, UpdateProfileForm
 
 @app.route('/')
 @app.route('/home')
@@ -44,10 +44,26 @@ def logout():
     logout_user()
     return redirect(url_for('home'))
 
-@app.route('/account')
+@app.route('/account', methods=['GET', 'POST'])
 @login_required
 def account():
-    return render_template('account.html')
+    form = UpdateProfileForm()
+    if form.validate_on_submit():
+        # Обновление имени пользователя
+        current_user.username = form.username.data
+        # Обновление email
+        current_user.email = form.email.data
+        # Обновление пароля (только если введен новый пароль)
+        if form.password.data:
+            current_user.password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+        db.session.commit()
+        flash('Профиль успешно обновлен!', 'success')
+        return redirect(url_for('account'))
+    elif request.method == 'GET':
+        # Заполняем форму текущими данными пользователя
+        form.username.data = current_user.username
+        form.email.data = current_user.email
+    return render_template('account.html', form=form, title='Аккаунт')
 
 
 # Маршрут для анкеты
